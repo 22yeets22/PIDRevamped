@@ -97,7 +97,10 @@ class KPID:
 
 
 class Robot:
-    def __init__(self, gear_ratio, vel):
+    def __init__(self, forward_kpid, adjust_kpid, turn_kpid, gear_ratio, vel):
+        self.forward_kpid = forward_kpid
+        self.adjust_kpid = adjust_kpid
+        self.turn_kpid = turn_kpid
         self.gear_ratio = gear_ratio
         self.form_factor = 548.64 * (1 / gear_ratio)
         self.vel = vel
@@ -120,7 +123,6 @@ class Robot:
 
     
     def drivetrain_drive(self, length, vel=None, time=None, straight=True):
-        # IGNORE PLS
         if vel is None:
             vel = self.vel
 
