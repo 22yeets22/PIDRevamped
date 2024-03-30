@@ -61,7 +61,7 @@ def calibrate_drivetrain():
 
 
 class KPID:
-    def __init__(self, p, *id):
+    def __init__(self, p, *val):
         # Crazy function, I know...
         # Takes in p, i, d
         # Can be passed in a list/tuple or 3 seperate values
@@ -69,25 +69,31 @@ class KPID:
             if len(p) != 3:
                 raise AttributeError("Mismatching arguments for KPID class (expects list / tuple with 3 values)")
             else:
-                self.kp = p[0]
-                self.ki = p[1]
-                seld.kd = p[2]
+                self.kp, self.ki, self.kd = p
         else:
-            if len(id) != 2:
+            if len(val) != 2:
                 raise AttributeError("Mismatching arguments for KPID class (expected 3 inputs)")
             else:
                 self.kp = p
-                self.ki = id[0]
-                self.kd = id[1]
+                self.ki, self.kd = val
 
     def __repr__(self):
         return f"KPID({self.kp}, {self.ki}, {self.kd})"
 
     def __str__(self):
-        return f"P: {self.kp}, I: {self.ki}, D: {self.kd}"
+        return f"({self.kp}, {self.ki}, {self.kd})"
 
-    def calc(self, p_mult, i_mult, d_mult):
-        return self.kp * p_mult + self.ki * i_mult + self.kp * d_mult
+    def calc(self, p_mult, *val_mult):
+        if type(p_mult) in [list, tuple]:
+            if len(p_mult) != 3:
+                raise AttributeError("Mismatching arguments for KPID calc (expects list / tuple with 3 values)")
+            else:
+                return p_mult[0] * self.kp + p_mult[1] * self.ki + p_mult[2] * self.kd
+        else:
+            if len(val_mult) != 2:
+                raise AttributeError("Mismatching arguments for KPID calc (expected 3 inputs)")
+            else:
+                return p_mult * self.kp + val_mult[0] * self.ki + val_mult[1] * self.kd
 
 
 class Robot:
@@ -114,7 +120,7 @@ class Robot:
 
     
     def drivetrain_drive(self, length, vel=None, time=None, straight=True):
-        # IGNORE LOL
+        # IGNORE PLS
         if vel is None:
             vel = self.vel
 
