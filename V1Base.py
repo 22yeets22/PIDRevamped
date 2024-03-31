@@ -61,39 +61,18 @@ def calibrate_drivetrain():
 
 
 class KPID:
-    def __init__(self, p, *val):
-        # Crazy function, I know...
-        # Takes in p, i, d
-        # Can be passed in a list/tuple or 3 seperate values
-        if type(p) in [list, tuple]:
-            if len(p) != 3:
-                raise AttributeError("Mismatching arguments for KPID class (expects list / tuple with 3 values)")
-            else:
-                self.kp, self.ki, self.kd = p
-        else:
-            if len(val) != 2:
-                raise AttributeError("Mismatching arguments for KPID class (expected 3 inputs)")
-            else:
-                self.kp = p
-                self.ki, self.kd = val
+    def __init__(self, p, i, d, i_limit):
+        # Takes in p, i, d, i_limit
+        self.kp, self.ki, self.kd, self.ki_limit = p, i, d, i_limit
 
     def __repr__(self):
-        return f"KPID({self.kp}, {self.ki}, {self.kd})"
+        return f"KPID({self.kp}, {self.ki}, {self.kd}, {self.ki_limit})"
 
     def __str__(self):
-        return f"({self.kp}, {self.ki}, {self.kd})"
+        return f"({self.kp}, {self.ki}, {self.kd}, {self.ki_limit})"
 
-    def calc(self, p_mult, *val_mult):
-        if type(p_mult) in [list, tuple]:
-            if len(p_mult) != 3:
-                raise AttributeError("Mismatching arguments for KPID calc (expects list / tuple with 3 values)")
-            else:
-                return p_mult[0] * self.kp + p_mult[1] * self.ki + p_mult[2] * self.kd
-        else:
-            if len(val_mult) != 2:
-                raise AttributeError("Mismatching arguments for KPID calc (expected 3 inputs)")
-            else:
-                return p_mult * self.kp + val_mult[0] * self.ki + val_mult[1] * self.kd
+    def calc(self, p_mult, i_mult, d_mult):
+        return p_mult * self.kp + i_mult * self.ki + d_mult * self.kd
 
 
 class Robot:
@@ -101,9 +80,10 @@ class Robot:
         self.forward_kpid = forward_kpid
         self.adjust_kpid = adjust_kpid
         self.turn_kpid = turn_kpid
+
         self.gear_ratio = gear_ratio
         self.form_factor = 548.64 * (1 / gear_ratio)
-        self.vel = vel
+        self.default_vel = vel
 
         left_drive_smart.set_max_torque(100, PERCENT)
         right_drive_smart.set_max_torque(100, PERCENT)
@@ -116,15 +96,13 @@ class Robot:
         lift.set_max_torque(100, PERCENT)
         lift.set_stopping(HOLD)
 
-    
     def set_drivetrain_velocity(self, left, right):
         left_drive_smart.set_velocity(left, PERCENT)
         right_drive_smart.set_velocity(right, PERCENT)
-
     
     def drivetrain_drive(self, length, vel=None, time=None, straight=True):
         if vel is None:
-            vel = self.vel
+            vel = self.default_vel
 
         start_rotation = brain_inertial.rotation()
         self.set_drivetrain_velocity(vel, vel)
@@ -143,7 +121,10 @@ class Robot:
         wait(10, MSEC)
 
 
-GEAR_RATIO = 3/2
+GEAR_RATIO = 3 / 2
 VELOCITY = 100
-robot = Robot(GEAR_RATIO, VELOCITY)
+FORWARD_KPID = KPID()
+ADJUST_KPID = KPID()
+TURN_KPID = KPID()
+robot = Robot(FORWARD_KPID, ADJUST_KPID, TURN_KPID, GEAR_RATIO, VELOCITY)
 robot.drive_forward(10)
