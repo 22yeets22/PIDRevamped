@@ -66,18 +66,15 @@ class KPID:
         self.kp, self.ki, self.kd, self.ki_limit = p, i, d, i_limit
 
     def __repr__(self):
-        return f"KPID({self.kp}, {self.ki}, {self.kd}, {self.ki_limit})"
+        return 'none'
+        #return f"KPID({self.kp}, {self.ki}, {self.kd}, {self.ki_limit})"
 
     def __str__(self):
-        return f"({self.kp}, {self.ki}, {self.kd}, {self.ki_limit})"
+        return 'none'
+        #return f"({self.kp}, {self.ki}, {self.kd}, {self.ki_limit})"
 
     def calc(self, p_mult, i_mult, d_mult):
         return p_mult * self.kp + i_mult * self.ki + d_mult * self.kd
-
-
-class DictWrapper:
-    def __init__(self, dictionary):
-        self.__dict__ = dictionary
 
 
 class Robot:
@@ -93,18 +90,13 @@ class Robot:
         self.wheel_circumference_mm = 200  # Wheel circumference in mm
 
         # Driving straight variables
-        self.drive_variables = DictWrapper({
+        self.drive_variables = {
             'exit_tolerance': self.inches_to_degrees(exit_tolerance_in),
             'exit_tolerance_deg': exit_tolerance_deg,
             'exit_tolerance_count': exit_tolerance_count,
             'stall_tolerance_vel': stall_tolerance_vel,
             'stall_tolerance_count': stall_tolerance_count
-        })
-
-        '''self.exit_tolerance = self.inches_to_degrees(exit_tolerance_in)
-        self.exit_tolerance_deg = exit_tolerance_deg
-        self.stall_tolerance_vel = 10
-        self.stall_tolerance_count = 15'''
+        }
 
         # Initalize motor
         left_drive_smart.set_max_torque(100, PERCENT)
@@ -125,20 +117,15 @@ class Robot:
     def inches_to_degrees(self, inches):
         circumference_in_inches = self.wheel_circumference_mm / 25.4  # Convert mm to inches
         revolutions = inches / circumference_in_inches
-        degrees = revolutions * 360 * self.gear_ratio
+        degrees = revolutions * 360 / self.gear_ratio
         return degrees
     
-    def degrees_to_inches(self, degrees):
-        circumference_in_inches = self.wheel_circumference_mm / 25.4  # Convert mm to inches
-        revolutions = degrees / (360 * self.gear_ratio)
-        inches = revolutions * circumference_in_inches
-        return inches
-
     def drivetrain_drive(self, length, target_angle=None, vel=None, time=None, straight=True):
         if vel is None:
             vel = self.default_vel
 
         length_degrees = self.inches_to_degrees(length)
+        print(length_degrees)
 
         stopped = 0  # Counter for how long it takes to stop
         stall = 0  # Counter for how long the robot is stalling
@@ -163,6 +150,8 @@ class Robot:
         left_drive_smart.spin(FORWARD)
         right_drive_smart.spin(FORWARD)
         while True:
+            start_time = brain.timer.time(MSEC)  # Used to calculate dt
+
             # Forward section PID            
             average_position = (left_drive_smart.position(DEGREES) + right_drive_smart.position(DEGREES)) / 2
 
@@ -178,7 +167,7 @@ class Robot:
             forward_motor_power = self.forward_kpid.calc(fwd_p, fwd_i, fwd_d)
 
             # Adjust section PID
-            adj_p = target_angle - brain_inertial.rotation()  # Positional (error for turning)
+            adj_p = brain_inertial.rotation() - target_angle  # Positional (error for turning)
             adj_i += adj_p  # Intergral: velocity, position, absement
             if adj_i > self.forward_kpid.ki_limit:
                 adj_i = self.forward_kpid.ki_limit
@@ -188,8 +177,9 @@ class Robot:
             adjust_motor_power = self.adjust_kpid.calc(adj_p, adj_i, adj_d)
 
             # Spinning motors
-            if forward_motor_power > 100 - adjust_motor_power:
-                forward_motor_power = 100 - adjust_motor_power
+            print("Raw Motor Powers:", forward_motor_power * vel / 100, adjust_motor_power * vel / 100)
+            if forward_motor_power > 100 - abs(adjust_motor_power):
+                forward_motor_power = 100 - abs(adjust_motor_power)
             print("Motor Powers:", forward_motor_power * vel / 100, adjust_motor_power * vel / 100)
             left_drive_smart.set_velocity((forward_motor_power - adjust_motor_power) * vel / 100, PERCENT)
             right_drive_smart.set_velocity((forward_motor_power + adjust_motor_power) * vel / 100, PERCENT)
@@ -200,20 +190,22 @@ class Robot:
             # Check for stall and stop
             print()
 
-            if drivetrain.current(CurrentUnits.AMP) > 1 and (abs(left_drive_smart.velocity(PERCENT)) + abs(right_drive_smart.velocity(PERCENT))) / 2 < self.drive_variables.stall_tolerance_vel:
+            if drivetrain.current(CurrentUnits.AMP) > 1.1 and (abs(left_drive_smart.velocity(PERCENT)) + abs(right_drive_smart.velocity(PERCENT))) / 2 < self.drive_variables['stall_tolerance_vel']:
                 stall += 1
             else:
                 stall = 0
-            if stall > self.drive_variables.stall_tolerance_count:
+            if stall > self.drive_variables['stall_tolerance_count']:
                 print("\nStalled")
                 break
 
             # Is it at the goal
-            if abs(fwd_p) < self.drive_variables.exit_movement and abs(adj_p) < self.drive_variables.exit_movement_deg: stopped += 1
+            if abs(fwd_p) < self.drive_variables['exit_tolerance'] and abs(adj_p) < self.drive_variables['exit_tolerance_deg']: stopped += 1
             else: stopped = 0
-            if self.drive_variables.exit_tolerance_count < stopped: break
+            if self.drive_variables['exit_tolerance_count'] < stopped: break
 
-            wait(20, MSEC)
+            dt = brain.timer.time(MSEC) - start_time
+            print(dt)
+            wait(20 - dt, MSEC)
         
         left_drive_smart.set_velocity(100, PERCENT)
         right_drive_smart.set_velocity(100, PERCENT)
@@ -225,10 +217,10 @@ class Robot:
         return fwd_p, adj_p
 
 
-GEAR_RATIO = 3 / 2
+GEAR_RATIO = 1
 VELOCITY = 100
-FORWARD_KPID = KPID(1, 0, 0, 1000)
-ADJUST_KPID = KPID(1, 0, 0, 1000)
+FORWARD_KPID = KPID(0.2, 0, 0.3, 1000)
+ADJUST_KPID = KPID(0.3, 0, 0.2, 1000)
 TURN_KPID = KPID(1, 0, 0, 1000)
 robot = Robot(FORWARD_KPID, ADJUST_KPID, TURN_KPID, GEAR_RATIO, VELOCITY)
 robot.drivetrain_drive(12)
