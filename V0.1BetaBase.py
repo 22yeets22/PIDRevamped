@@ -166,7 +166,7 @@ class Robot:
             # Forward section PID            
             average_position = (left_drive_smart.position(DEGREES) + right_drive_smart.position(DEGREES)) / 2
 
-            fwd_p = length_degrees - average_position  # Positional
+            fwd_p = length_degrees - average_position  # Positional (error for lateral / driving forward)
             fwd_i += fwd_p  # Integral: velocity, position, absement
             if fwd_i > self.forward_kpid.ki_limit:
                 fwd_i = self.forward_kpid.ki_limit
@@ -178,7 +178,7 @@ class Robot:
             forward_motor_power = self.forward_kpid.calc(fwd_p, fwd_i, fwd_d)
 
             # Adjust section PID
-            adj_p = target_angle - brain_inertial.rotation()  # Positional
+            adj_p = target_angle - brain_inertial.rotation()  # Positional (error for turning)
             adj_i += adj_p  # Intergral: velocity, position, absement
             if adj_i > self.forward_kpid.ki_limit:
                 adj_i = self.forward_kpid.ki_limit
@@ -209,7 +209,7 @@ class Robot:
                 break
 
             # Is it at the goal
-            if abs(error) < self.drive_variables.exit_movement and abs(turn_error) < self.drive_variables.exit_movement_deg: stopped += 1
+            if abs(fwd_p) < self.drive_variables.exit_movement and abs(adj_p) < self.drive_variables.exit_movement_deg: stopped += 1
             else: stopped = 0
             if self.drive_variables.exit_tolerance_count < stopped: break
 
@@ -222,13 +222,13 @@ class Robot:
 
         wait(30, MSEC)
 
-        return error, turn_error
+        return fwd_p, adj_p
 
 
 GEAR_RATIO = 3 / 2
 VELOCITY = 100
-FORWARD_KPID = KPID(1, 0, 0)
-ADJUST_KPID = KPID(1, 0, 0)
-TURN_KPID = KPID(1, 0, 0)
+FORWARD_KPID = KPID(1, 0, 0, 1000)
+ADJUST_KPID = KPID(1, 0, 0, 1000)
+TURN_KPID = KPID(1, 0, 0, 1000)
 robot = Robot(FORWARD_KPID, ADJUST_KPID, TURN_KPID, GEAR_RATIO, VELOCITY)
 robot.drivetrain_drive(12)
