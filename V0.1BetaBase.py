@@ -66,12 +66,10 @@ class KPID:
         self.kp, self.ki, self.kd, self.ki_limit = p, i, d, i_limit
 
     def __repr__(self):
-        return 'none'
-        #return f"KPID({self.kp}, {self.ki}, {self.kd}, {self.ki_limit})"
+        return "KPID({}, {}, {}, {})".format(self.kp, self.ki, self.kd, self.ki_limit)
 
     def __str__(self):
-        return 'none'
-        #return f"({self.kp}, {self.ki}, {self.kd}, {self.ki_limit})"
+        return "KPID({}, {}, {}, {})".format(self.kp, self.ki, self.kd, self.ki_limit)
 
     def calc(self, p_mult, i_mult, d_mult):
         return p_mult * self.kp + i_mult * self.ki + d_mult * self.kd
@@ -84,7 +82,7 @@ class Robot:
         self.turn_kpid = turn_kpid
 
         self.gear_ratio = gear_ratio
-        self.form_factor = 548.64 * (1 / gear_ratio)
+        # self.form_factor = 548.64 * (1 / gear_ratio)
         self.default_vel = vel
 
         self.wheel_circumference_mm = 200  # Wheel circumference in mm
@@ -117,15 +115,13 @@ class Robot:
     def inches_to_degrees(self, inches):
         circumference_in_inches = self.wheel_circumference_mm / 25.4  # Convert mm to inches
         revolutions = inches / circumference_in_inches
-        degrees = revolutions * 360 / self.gear_ratio
-        return degrees
+        return revolutions * 360 / self.gear_ratio
     
     def drivetrain_drive(self, length, target_angle=None, vel=None, time=None, straight=True):
         if vel is None:
             vel = self.default_vel
 
         length_degrees = self.inches_to_degrees(length)
-        print(length_degrees)
 
         stopped = 0  # Counter for how long it takes to stop
         stall = 0  # Counter for how long the robot is stalling
